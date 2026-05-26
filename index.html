@@ -3,587 +3,2310 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes, shrink-to-fit=no, viewport-fit=cover">
-  <meta name="theme-color" content="#0a0f1a">
+  <meta name="theme-color" content="#030712">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>GempaWatch • BMKG Live</title>
+  <title>GempaWatch Pro • BMKG Real-time Seismic Dashboard</title>
+  
+  <!-- Premium Typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Leaflet.js Mapping Library -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  
   <style>
+    :root {
+      --bg-color: #030712;
+      --card-bg: rgba(15, 23, 42, 0.45);
+      --card-bg-hover: rgba(30, 41, 59, 0.55);
+      --card-border: rgba(255, 255, 255, 0.07);
+      --card-border-active: rgba(59, 130, 246, 0.4);
+      --text-primary: #f8fafc;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+      
+      /* Accent Colors (Seismic Levels) */
+      --accent-teal: #14b8a6;    /* M < 4.0 (Minor) */
+      --accent-yellow: #eab308;  /* M 4.0 - 4.9 (Light) */
+      --accent-orange: #f97316;  /* M 5.0 - 5.9 (Moderate) */
+      --accent-red: #ef4444;     /* M >= 6.0 (Strong/Severe) */
+      --accent-blue: #3b82f6;    /* Tech / Interactive */
+      
+      --font-main: 'Plus Jakarta Sans', sans-serif;
+      --font-mono: 'Space Grotesk', sans-serif;
+    }
+
     * {
       margin: 0;
       padding: 0;
       box-sizing: border-box;
+      outline: none;
     }
 
-    html {
-      font-size: 16px;
-      -webkit-text-size-adjust: 100%;
-    }
-
-    body {
-      font-family: 'Google Sans', 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+    html, body {
+      font-family: var(--font-main);
+      background-color: var(--bg-color);
+      color: var(--text-primary);
       min-height: 100vh;
-      min-height: -webkit-fill-available;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 0.6rem;
-      background: #0a0f1a;
-      background-image: radial-gradient(ellipse at 40% 30%, rgba(239, 68, 68, 0.06) 0%, transparent 50%),
-                        radial-gradient(ellipse at 60% 70%, rgba(234, 179, 8, 0.04) 0%, transparent 50%);
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
     }
 
-    .container {
-      width: 100%;
-      max-width: 500px;
+    /* Ambient Animated Radial Glows */
+    body::before {
+      content: '';
+      position: fixed;
+      top: -10%;
+      left: -10%;
+      width: 50%;
+      height: 50%;
+      background: radial-gradient(circle, rgba(59, 130, 246, 0.08) 0%, transparent 70%);
+      z-index: -1;
+      pointer-events: none;
+      animation: drift 25s infinite alternate ease-in-out;
+    }
+
+    body::after {
+      content: '';
+      position: fixed;
+      bottom: -10%;
+      right: -10%;
+      width: 60%;
+      height: 60%;
+      background: radial-gradient(circle, rgba(239, 68, 68, 0.06) 0%, transparent 70%);
+      z-index: -1;
+      pointer-events: none;
+      animation: drift 30s infinite alternate-reverse ease-in-out;
+    }
+
+    @keyframes drift {
+      0% { transform: translate(0, 0) scale(1); }
+      100% { transform: translate(10%, 10%) scale(1.15); }
+    }
+
+    /* Dashboard Shell Layout */
+    .dashboard-container {
+      max-width: 1440px;
       margin: 0 auto;
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
     }
 
-    .glass-panel {
-      background: rgba(15, 23, 42, 0.9);
-      backdrop-filter: blur(30px);
-      -webkit-backdrop-filter: blur(30px);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 1.8rem;
-      padding: 1.4rem 1.1rem 1.6rem;
-      box-shadow: 0 25px 45px rgba(0, 0, 0, 0.7);
-      color: #e2e8f0;
-    }
-
-    .header {
+    /* Header Styling */
+    header {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      margin-bottom: 1rem;
+      padding: 1rem 1.5rem;
+      background: rgba(15, 23, 42, 0.4);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--card-border);
+      border-radius: 1.25rem;
+      gap: 1rem;
       flex-wrap: wrap;
-      gap: 0.6rem;
     }
 
-    .logo {
+    .brand-section {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .brand-icon-wrapper {
+      position: relative;
+      width: 42px;
+      height: 42px;
+      background: linear-gradient(135deg, rgba(59, 130, 246, 0.2) 0%, rgba(239, 68, 68, 0.2) 100%);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 0.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+    }
+
+    .brand-icon-wrapper.active-pulse::after {
+      content: '';
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      border-radius: 0.75rem;
+      border: 2px solid var(--accent-red);
+      animation: seismic-ring 1.5s infinite ease-out;
+    }
+
+    @keyframes seismic-ring {
+      0% { transform: scale(1); opacity: 1; }
+      100% { transform: scale(1.6); opacity: 0; }
+    }
+
+    .brand-text h1 {
+      font-size: 1.25rem;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      background: linear-gradient(to right, #ffffff, #94a3b8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      line-height: 1.2;
+    }
+
+    .brand-text p {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+
+    .status-group {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .clock-badge {
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      padding: 0.4rem 0.8rem;
+      border-radius: 0.75rem;
+      color: var(--text-secondary);
       display: flex;
       align-items: center;
       gap: 0.4rem;
     }
 
-    .logo-icon {
-      font-size: 1.8rem;
-      animation: shake 0.5s ease-in-out infinite;
-      animation-play-state: paused;
-    }
-
-    .logo-icon.active {
-      animation-play-state: running;
-    }
-
-    @keyframes shake {
-      0%, 100% { transform: rotate(0deg); }
-      25% { transform: rotate(3deg); }
-      75% { transform: rotate(-3deg); }
-    }
-
-    .logo-text {
-      font-size: 1.2rem;
+    .live-indicator {
+      background: rgba(239, 68, 68, 0.12);
+      border: 1px solid rgba(239, 68, 68, 0.4);
+      color: var(--accent-red);
+      padding: 0.4rem 0.9rem;
+      border-radius: 0.75rem;
+      font-size: 0.75rem;
       font-weight: 700;
-      letter-spacing: -0.2px;
-      color: #f1f5f9;
-      line-height: 1.1;
-    }
-
-    .logo-sub {
-      font-size: 0.65rem;
-      color: #94a3b8;
-      font-weight: 400;
-    }
-
-    .live-badge {
-      background: rgba(239, 68, 68, 0.2);
-      border: 1px solid rgba(239, 68, 68, 0.5);
-      padding: 0.35rem 0.9rem;
-      border-radius: 2rem;
-      font-size: 0.7rem;
-      font-weight: 700;
-      color: #f87171;
+      letter-spacing: 0.5px;
       display: flex;
       align-items: center;
-      gap: 0.3rem;
-      letter-spacing: 0.2px;
+      gap: 0.4rem;
+      box-shadow: 0 0 12px rgba(239, 68, 68, 0.15);
     }
 
-    .live-dot {
-      width: 7px;
-      height: 7px;
-      background: #ef4444;
+    .live-pulse-dot {
+      width: 8px;
+      height: 8px;
+      background: var(--accent-red);
       border-radius: 50%;
-      animation: pulse 1.5s infinite;
+      animation: pulse-dot 1.8s infinite;
+      box-shadow: 0 0 8px var(--accent-red);
     }
 
-    @keyframes pulse {
-      0%, 100% { opacity: 1; transform: scale(1); }
-      50% { opacity: 0.4; transform: scale(1.4); }
+    @keyframes pulse-dot {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.4); opacity: 0.4; }
     }
 
-    .latest-card {
-      background: linear-gradient(145deg, rgba(30, 41, 59, 0.9) 0%, rgba(15, 23, 42, 0.95) 100%);
+    /* Main Dashboard Grid */
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: 1.25fr 0.75fr;
+      gap: 1.5rem;
+    }
+
+    /* Left & Right Main Columns */
+    .main-column, .sidebar-column {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    /* Card Panels Styling (Glassmorphism 2.0) */
+    .glass-panel {
+      background: var(--card-bg);
+      backdrop-filter: blur(24px) saturate(110%);
+      -webkit-backdrop-filter: blur(24px) saturate(110%);
+      border: 1px solid var(--card-border);
       border-radius: 1.5rem;
-      padding: 1.3rem 1.1rem;
-      border: 1px solid rgba(239, 68, 68, 0.2);
-      margin-bottom: 1rem;
-      text-align: center;
-      transition: all 0.3s;
+      padding: 1.5rem;
+      box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.4);
+      transition: border-color 0.3s, box-shadow 0.3s;
+    }
+
+    .glass-panel:hover {
+      border-color: rgba(255, 255, 255, 0.1);
+    }
+
+    /* Interactive Map Card */
+    .map-card {
+      position: relative;
+      padding: 0.5rem; /* tight padding for clean map frame */
       overflow: hidden;
     }
 
-    .latest-label {
-      font-size: 0.7rem;
-      color: #f87171;
-      text-transform: uppercase;
-      letter-spacing: 2px;
-      font-weight: 600;
-      margin-bottom: 0.3rem;
+    .map-container {
+      height: 420px;
+      width: 100%;
+      border-radius: 1.15rem;
+      background: #090d16;
+      z-index: 1;
     }
 
-    .magnitude {
-      font-size: 3.8rem;
+    /* Dark theme overrides for Leaflet.js */
+    .leaflet-bar {
+      border: 1px solid var(--card-border) !important;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5) !important;
+    }
+    .leaflet-bar a {
+      background-color: #0f172a !important;
+      color: #94a3b8 !important;
+      border-bottom: 1px solid rgba(255,255,255,0.05) !important;
+      transition: all 0.2s;
+    }
+    .leaflet-bar a:hover {
+      background-color: #1e293b !important;
+      color: #ffffff !important;
+    }
+    .leaflet-container {
+      font-family: var(--font-main) !important;
+    }
+    .leaflet-popup-content-wrapper {
+      background: rgba(15, 23, 42, 0.95) !important;
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.12) !important;
+      color: var(--text-primary) !important;
+      border-radius: 1rem !important;
+      box-shadow: 0 15px 30px rgba(0,0,0,0.6) !important;
+      padding: 0.2rem;
+    }
+    .leaflet-popup-tip {
+      background: rgba(15, 23, 42, 0.95) !important;
+      border-left: 1px solid rgba(255, 255, 255, 0.12);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+    }
+    .popup-title {
+      font-weight: 700;
+      font-size: 0.85rem;
+      margin-bottom: 0.35rem;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+    .popup-meta {
+      font-size: 0.72rem;
+      color: var(--text-secondary);
+      line-height: 1.35;
+    }
+    .popup-mag {
+      font-family: var(--font-mono);
+      font-weight: 700;
+      padding: 0.1rem 0.4rem;
+      border-radius: 0.35rem;
+      float: right;
+      margin-left: 0.5rem;
+    }
+
+    /* Map Glowing Seismic Marker Styles */
+    .custom-map-marker {
+      background: transparent;
+      border: none;
+    }
+    .marker-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      width: 100%;
+      height: 100%;
+    }
+    .marker-core {
+      border-radius: 50%;
+      z-index: 2;
+      box-shadow: 0 0 10px rgba(0,0,0,0.6);
+      transition: all 0.3s;
+    }
+    .marker-ring {
+      position: absolute;
+      border-radius: 50%;
+      z-index: 1;
+      opacity: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    .marker-container.green .marker-core { background: var(--accent-teal); box-shadow: 0 0 8px var(--accent-teal); }
+    .marker-container.green .marker-ring { border: 2px solid var(--accent-teal); }
+
+    .marker-container.yellow .marker-core { background: var(--accent-yellow); box-shadow: 0 0 8px var(--accent-yellow); }
+    .marker-container.yellow .marker-ring { border: 2px solid var(--accent-yellow); }
+
+    .marker-container.orange .marker-core { background: var(--accent-orange); box-shadow: 0 0 10px var(--accent-orange); }
+    .marker-container.orange .marker-ring { border: 2px solid var(--accent-orange); }
+
+    .marker-container.red .marker-core { background: var(--accent-red); box-shadow: 0 0 14px var(--accent-red); }
+    .marker-container.red .marker-ring { border: 2px solid var(--accent-red); }
+
+    @keyframes pulseLarge {
+      0% { transform: scale(0.5); opacity: 0.9; }
+      100% { transform: scale(3.5); opacity: 0; }
+    }
+    @keyframes pulseSmall {
+      0% { transform: scale(0.6); opacity: 0.7; }
+      100% { transform: scale(2.2); opacity: 0; }
+    }
+    .seismic-pulse-large {
+      animation: pulseLarge 2.2s infinite ease-out;
+    }
+    .seismic-pulse-small {
+      animation: pulseSmall 2.8s infinite ease-out;
+    }
+
+    /* Primary Latest Earthquake Card */
+    .primary-quake-card {
+      position: relative;
+      overflow: hidden;
+    }
+
+    .primary-quake-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 4px;
+      background: var(--accent-blue);
+      transition: background 0.5s;
+    }
+
+    .primary-quake-card.green::before { background: var(--accent-teal); }
+    .primary-quake-card.yellow::before { background: var(--accent-yellow); }
+    .primary-quake-card.orange::before { background: var(--accent-orange); }
+    .primary-quake-card.red::before { background: var(--accent-red); }
+
+    .card-header-accent {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      margin-bottom: 1.25rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: var(--accent-blue);
+    }
+    
+    .primary-quake-card.green .card-header-accent { color: var(--accent-teal); }
+    .primary-quake-card.yellow .card-header-accent { color: var(--accent-yellow); }
+    .primary-quake-card.orange .card-header-accent { color: var(--accent-orange); }
+    .primary-quake-card.red .card-header-accent { color: var(--accent-red); }
+
+    .card-main-display {
+      display: flex;
+      align-items: center;
+      gap: 2rem;
+      margin-bottom: 1.75rem;
+      flex-wrap: wrap;
+    }
+
+    /* Huge Magnificent Magnitude Ring */
+    .magnitude-ring-wrapper {
+      position: relative;
+      width: 140px;
+      height: 140px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .magnitude-ring-svg {
+      width: 100%;
+      height: 100%;
+      transform: rotate(-90deg);
+    }
+
+    .magnitude-ring-bg {
+      fill: none;
+      stroke: rgba(255,255,255,0.04);
+      stroke-width: 10;
+    }
+
+    .magnitude-ring-fill {
+      fill: none;
+      stroke: var(--accent-blue);
+      stroke-width: 10;
+      stroke-linecap: round;
+      stroke-dasharray: 377;
+      stroke-dashoffset: 377; /* animated dynamically in JS */
+      transition: stroke-dashoffset 1.5s cubic-bezier(0.1, 0.8, 0.2, 1), stroke 0.5s;
+    }
+
+    .magnitude-text-center {
+      position: absolute;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+
+    .magnitude-value {
+      font-family: var(--font-mono);
+      font-size: 2.8rem;
       font-weight: 800;
       color: #ffffff;
       line-height: 1;
       letter-spacing: -1.5px;
-      text-shadow: 0 0 25px rgba(239, 68, 68, 0.5);
+      text-shadow: 0 0 20px rgba(255,255,255,0.1);
+      transition: text-shadow 0.5s;
     }
 
-    .mag-label {
-      font-size: 0.75rem;
-      color: #94a3b8;
-      margin-bottom: 0.2rem;
-    }
+    .primary-quake-card.green .magnitude-value { text-shadow: 0 0 20px rgba(20, 184, 166, 0.4); }
+    .primary-quake-card.yellow .magnitude-value { text-shadow: 0 0 20px rgba(234, 179, 8, 0.4); }
+    .primary-quake-card.orange .magnitude-value { text-shadow: 0 0 20px rgba(249, 115, 22, 0.4); }
+    .primary-quake-card.red .magnitude-value { text-shadow: 0 0 25px rgba(239, 68, 68, 0.6); }
 
-    .location-name {
-      font-size: 1rem;
+    .magnitude-label {
+      font-size: 0.62rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-secondary);
       font-weight: 600;
-      color: #f1f5f9;
-      margin: 0.3rem 0;
-      line-height: 1.35;
-      word-break: break-word;
-      padding: 0 0.3rem;
+      margin-top: -2px;
     }
 
-    .time-info {
-      font-size: 0.75rem;
-      color: #94a3b8;
+    .info-overview {
+      flex: 1;
+      min-width: 250px;
+    }
+
+    .info-overview h2 {
+      font-size: 1.4rem;
+      font-weight: 800;
+      line-height: 1.3;
+      color: #ffffff;
       margin-bottom: 0.6rem;
+      letter-spacing: -0.3px;
     }
 
-    .shakemap-container {
-      margin: 0.8rem 0;
-      border-radius: 0.9rem;
-      overflow: hidden;
-      border: 2px solid rgba(255,255,255,0.1);
-      background: #020617;
-      max-height: 250px;
+    .info-overview .datetime-text {
+      font-size: 0.88rem;
+      color: var(--text-secondary);
       display: flex;
       align-items: center;
-      justify-content: center;
+      gap: 0.4rem;
+      margin-bottom: 1rem;
     }
 
-    .shakemap-img {
-      width: 100%;
-      height: auto;
-      display: block;
-      object-fit: contain;
-      max-height: 250px;
+    /* Control Buttons for Latest Card */
+    .button-group-row {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
     }
 
-    .detail-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 0.5rem;
-      margin-top: 0.6rem;
-    }
-
-    .detail-item {
-      background: rgba(0, 0, 0, 0.3);
-      border-radius: 0.9rem;
-      padding: 0.7rem 0.3rem;
-      border: 1px solid rgba(255,255,255,0.05);
-    }
-
-    .detail-icon {
-      font-size: 1.1rem;
-      margin-bottom: 0.1rem;
-    }
-
-    .detail-label {
-      font-size: 0.58rem;
-      color: #64748b;
-      text-transform: uppercase;
-      letter-spacing: 0.4px;
-    }
-
-    .detail-value {
-      font-size: 0.78rem;
-      font-weight: 600;
-      color: #e2e8f0;
-      word-break: break-word;
-      line-height: 1.2;
-    }
-
-    .section-title {
+    .btn-action {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: var(--text-primary);
+      padding: 0.6rem 1.1rem;
+      border-radius: 0.85rem;
       font-size: 0.8rem;
       font-weight: 600;
-      color: #94a3b8;
-      margin-bottom: 0.6rem;
-      display: flex;
-      align-items: center;
-      gap: 0.3rem;
-    }
-
-    .quake-list {
-      display: flex;
-      flex-direction: column;
-      gap: 0.5rem;
-      max-height: 280px;
-      overflow-y: auto;
-      padding-right: 0.2rem;
-      scrollbar-width: thin;
-      scrollbar-color: #334155 transparent;
-      -webkit-overflow-scrolling: touch;
-    }
-
-    .quake-list::-webkit-scrollbar {
-      width: 3px;
-    }
-    .quake-list::-webkit-scrollbar-thumb {
-      background: #334155;
-      border-radius: 10px;
-    }
-
-    .quake-item {
-      background: rgba(30, 41, 59, 0.6);
-      border-radius: 1rem;
-      padding: 0.8rem 0.9rem;
-      border: 1px solid rgba(255,255,255,0.05);
-      display: flex;
-      align-items: center;
-      gap: 0.7rem;
-      transition: all 0.2s;
-      backdrop-filter: blur(10px);
-      touch-action: manipulation;
-    }
-
-    .quake-item:active {
-      background: rgba(37, 99, 235, 0.15);
-      transform: scale(0.98);
-    }
-
-    .mag-badge {
-      background: rgba(239, 68, 68, 0.2);
-      color: #f87171;
-      font-weight: 700;
-      font-size: 1rem;
-      padding: 0.45rem 0.6rem;
-      border-radius: 0.8rem;
-      min-width: 44px;
-      text-align: center;
-      border: 1px solid rgba(239, 68, 68, 0.3);
-      flex-shrink: 0;
-    }
-
-    .mag-badge.green {
-      background: rgba(34, 197, 94, 0.2);
-      color: #4ade80;
-      border-color: rgba(34, 197, 94, 0.3);
-    }
-    .mag-badge.yellow {
-      background: rgba(234, 179, 8, 0.2);
-      color: #facc15;
-      border-color: rgba(234, 179, 8, 0.3);
-    }
-    .mag-badge.orange {
-      background: rgba(249, 115, 22, 0.2);
-      color: #fb923c;
-      border-color: rgba(249, 115, 22, 0.3);
-    }
-    .mag-badge.red {
-      background: rgba(239, 68, 68, 0.2);
-      color: #f87171;
-      border-color: rgba(239, 68, 68, 0.3);
-    }
-
-    .quake-info {
-      flex: 1;
-      min-width: 0;
-    }
-
-    .quake-location {
-      font-weight: 600;
-      font-size: 0.82rem;
-      color: #e2e8f0;
-      line-height: 1.3;
-      word-break: break-word;
-    }
-
-    .quake-meta {
-      font-size: 0.65rem;
-      color: #94a3b8;
-      margin-top: 0.15rem;
-      display: flex;
-      gap: 0.6rem;
-      flex-wrap: wrap;
-    }
-
-    .refresh-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-top: 0.8rem;
-      font-size: 0.65rem;
-      color: #64748b;
-      flex-wrap: wrap;
-      gap: 0.4rem;
-    }
-
-    .refresh-btn {
-      background: #1e293b;
-      border: 1px solid #334155;
-      color: #e2e8f0;
-      padding: 0.55rem 1.2rem;
-      border-radius: 2rem;
-      font-weight: 600;
       cursor: pointer;
-      font-size: 0.75rem;
-      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
       touch-action: manipulation;
-      letter-spacing: 0.2px;
       min-height: 40px;
     }
 
-    .refresh-btn:active {
-      background: #2563eb;
-      color: white;
+    .btn-action:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: rgba(255, 255, 255, 0.18);
+      transform: translateY(-1.5px);
+    }
+
+    .btn-action:active {
+      transform: translateY(0.5px);
+    }
+
+    .btn-action.btn-accent {
+      background: rgba(59, 130, 246, 0.15);
+      border-color: rgba(59, 130, 246, 0.35);
+      color: #60a5fa;
+    }
+
+    .btn-action.btn-accent:hover {
+      background: rgba(59, 130, 246, 0.25);
+      border-color: rgba(59, 130, 246, 0.5);
+      color: #93c5fd;
+    }
+
+    .btn-action.btn-voice.voice-active {
+      background: rgba(16, 185, 129, 0.15);
+      border-color: rgba(16, 185, 129, 0.4);
+      color: #34d399;
+      animation: voice-pulse 1.5s infinite alternate ease-in-out;
+    }
+
+    @keyframes voice-pulse {
+      0% { box-shadow: 0 0 4px rgba(16, 185, 129, 0.2); }
+      100% { box-shadow: 0 0 12px rgba(16, 185, 129, 0.4); }
+    }
+
+    /* Core Metrics Grid */
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 0.75rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
+      padding-top: 1.25rem;
+    }
+
+    .metric-item {
+      background: rgba(0, 0, 0, 0.18);
+      border: 1px solid rgba(255, 255, 255, 0.03);
+      border-radius: 1rem;
+      padding: 0.9rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+      transition: all 0.3s;
+    }
+
+    .metric-item:hover {
+      background: rgba(255, 255, 255, 0.02);
+      border-color: rgba(255, 255, 255, 0.06);
+    }
+
+    .metric-meta {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+      font-weight: 700;
+    }
+
+    .metric-icon {
+      font-size: 0.9rem;
+    }
+
+    .metric-value {
+      font-family: var(--font-mono);
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      line-height: 1.2;
+    }
+
+    .metric-value.status-alert {
+      font-family: var(--font-main);
+      font-size: 0.95rem;
+      color: var(--accent-orange);
+    }
+
+    .metric-value.status-danger {
+      font-family: var(--font-main);
+      font-size: 0.95rem;
+      color: var(--accent-red);
+      font-weight: 800;
+    }
+
+    /* STATISTICS SIDEBAR PANEL */
+    .sidebar-title {
+      font-size: 0.88rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .stats-summary-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .stat-mini-card {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.04);
+      border-radius: 1rem;
+      padding: 0.85rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+
+    .stat-mini-label {
+      font-size: 0.65rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+
+    .stat-mini-val {
+      font-family: var(--font-mono);
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: #ffffff;
+    }
+
+    .stat-mini-sub {
+      font-size: 0.65rem;
+      color: var(--text-secondary);
+    }
+
+    /* Category Level Metrics bar charts */
+    .stats-category-panel {
+      background: rgba(0, 0, 0, 0.15);
+      border-radius: 1rem;
+      padding: 0.85rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+      border: 1px solid rgba(255, 255, 255, 0.02);
+    }
+
+    .stat-bar-item {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+
+    .stat-bar-labels {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.68rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+
+    .stat-bar-track {
+      height: 6px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 3px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .stat-bar-fill {
+      height: 100%;
+      border-radius: 3px;
+      width: 0%; /* updated dynamically */
+      transition: width 1s cubic-bezier(0.1, 0.8, 0.2, 1);
+    }
+
+    .stat-bar-fill.teal { background: var(--accent-teal); box-shadow: 0 0 6px var(--accent-teal); }
+    .stat-bar-fill.yellow { background: var(--accent-yellow); box-shadow: 0 0 6px var(--accent-yellow); }
+    .stat-bar-fill.orange { background: var(--accent-orange); box-shadow: 0 0 6px var(--accent-orange); }
+    .stat-bar-fill.red { background: var(--accent-red); box-shadow: 0 0 8px var(--accent-red); }
+
+    /* EARTHQUAKE LIST / FEED SIDEBAR */
+    .feed-card {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      flex: 1;
+      min-height: 480px;
+    }
+
+    /* Smart Filter Bar */
+    .filter-bar {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .search-wrapper {
+      position: relative;
+      width: 100%;
+    }
+
+    .search-input {
+      width: 100%;
+      background: rgba(0, 0, 0, 0.35);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: var(--text-primary);
+      padding: 0.65rem 1rem 0.65rem 2.25rem;
+      border-radius: 0.85rem;
+      font-size: 0.85rem;
+      transition: all 0.3s;
+      font-family: var(--font-main);
+    }
+
+    .search-input:focus {
+      border-color: var(--accent-blue);
+      box-shadow: 0 0 12px rgba(59, 130, 246, 0.15);
+      background: rgba(0, 0, 0, 0.5);
+    }
+
+    .search-icon {
+      position: absolute;
+      left: 0.85rem;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      pointer-events: none;
+    }
+
+    .search-clear-btn {
+      position: absolute;
+      right: 0.85rem;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 1.1rem;
+      line-height: 1;
+      display: none;
+    }
+
+    .search-clear-btn:hover {
+      color: #ffffff;
+    }
+
+    /* Filter Pill Group */
+    .filter-pills {
+      display: flex;
+      gap: 0.4rem;
+      overflow-x: auto;
+      padding-bottom: 0.2rem;
+      scrollbar-width: none; /* hide default */
+    }
+
+    .filter-pills::-webkit-scrollbar {
+      display: none;
+    }
+
+    .pill {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      color: var(--text-secondary);
+      padding: 0.4rem 0.85rem;
+      border-radius: 2rem;
+      font-size: 0.72rem;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .pill:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: #ffffff;
+    }
+
+    .pill.active {
+      background: rgba(59, 130, 246, 0.15);
+      border-color: rgba(59, 130, 246, 0.4);
+      color: #60a5fa;
+      box-shadow: 0 4px 10px rgba(59, 130, 246, 0.1);
+    }
+
+    /* Scrollable Quake List Feed */
+    .quake-feed-scroll {
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+      max-height: 380px;
+      padding-right: 0.35rem;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255,255,255,0.08) transparent;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .quake-feed-scroll::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    .quake-feed-scroll::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+    }
+    
+    .quake-feed-scroll::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.18);
+    }
+
+    /* List Feed Item Card */
+    .feed-item {
+      background: rgba(255, 255, 255, 0.015);
+      border: 1px solid rgba(255, 255, 255, 0.03);
+      border-radius: 1rem;
+      padding: 0.85rem 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.85rem;
+      cursor: pointer;
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      overflow: hidden;
+      touch-action: manipulation;
+    }
+
+    .feed-item::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      height: 100%;
+      width: 3px;
+      background: transparent;
+      transition: background-color 0.25s;
+    }
+
+    .feed-item:hover {
+      background: rgba(255, 255, 255, 0.04);
+      border-color: rgba(255, 255, 255, 0.08);
+      transform: translateX(2px);
+    }
+
+    .feed-item:active {
+      transform: scale(0.98);
+      background: rgba(59, 130, 246, 0.05);
+    }
+
+    .feed-item.selected {
+      background: rgba(59, 130, 246, 0.06);
+      border-color: rgba(59, 130, 246, 0.25);
+    }
+
+    .feed-item.selected::before {
+      background-color: var(--accent-blue);
+    }
+
+    /* Dynamic Border Accents on list items based on severity */
+    .feed-item.green:hover::before { background-color: var(--accent-teal); }
+    .feed-item.yellow:hover::before { background-color: var(--accent-yellow); }
+    .feed-item.orange:hover::before { background-color: var(--accent-orange); }
+    .feed-item.red:hover::before { background-color: var(--accent-red); }
+
+    /* Feed Magnitude Badge */
+    .feed-mag-badge {
+      font-family: var(--font-mono);
+      font-weight: 700;
+      font-size: 0.95rem;
+      width: 46px;
+      height: 42px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 0.75rem;
+      flex-shrink: 0;
+      border: 1px solid rgba(255,255,255,0.05);
+      transition: box-shadow 0.3s;
+    }
+
+    .feed-mag-badge.green {
+      background: rgba(20, 184, 166, 0.12);
+      color: #2dd4bf;
+      border-color: rgba(20, 184, 166, 0.2);
+    }
+    .feed-mag-badge.yellow {
+      background: rgba(234, 179, 8, 0.12);
+      color: #fef08a;
+      border-color: rgba(234, 179, 8, 0.2);
+    }
+    .feed-mag-badge.orange {
+      background: rgba(249, 115, 22, 0.12);
+      color: #fed7aa;
+      border-color: rgba(249, 115, 22, 0.25);
+    }
+    .feed-mag-badge.red {
+      background: rgba(239, 68, 68, 0.14);
+      color: #fecaca;
+      border-color: rgba(239, 68, 68, 0.3);
+      box-shadow: 0 0 10px rgba(239, 68, 68, 0.08);
+    }
+
+    .feed-info {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0.2rem;
+    }
+
+    .feed-location {
+      font-weight: 700;
+      font-size: 0.8rem;
+      color: var(--text-primary);
+      line-height: 1.35;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .feed-meta {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      font-size: 0.68rem;
+      color: var(--text-secondary);
+      flex-wrap: wrap;
+    }
+
+    .feed-meta span {
+      display: flex;
+      align-items: center;
+      gap: 0.2rem;
+    }
+
+    .feed-meta-divider {
+      color: rgba(255, 255, 255, 0.08);
+      font-weight: 300;
+    }
+
+    .feed-time-rel {
+      font-size: 0.65rem;
+      font-weight: 600;
+      color: var(--accent-blue);
+      margin-left: auto;
+      flex-shrink: 0;
+    }
+    
+    .feed-item.green .feed-time-rel { color: var(--accent-teal); }
+    .feed-item.yellow .feed-time-rel { color: var(--accent-yellow); }
+    .feed-item.orange .feed-time-rel { color: var(--accent-orange); }
+    .feed-item.red .feed-time-rel { color: var(--accent-red); }
+
+    /* Refresh row & details */
+    .refresh-footer-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: auto;
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
+      padding-top: 0.85rem;
+      font-size: 0.68rem;
+      color: var(--text-muted);
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .update-timestamp {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-weight: 500;
+    }
+
+    .btn-refresh-dashboard {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: var(--text-primary);
+      padding: 0.45rem 1rem;
+      border-radius: 2rem;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 0.72rem;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      min-height: 32px;
+    }
+
+    .btn-refresh-dashboard:hover {
+      background: #1e293b;
+      border-color: rgba(255, 255, 255, 0.15);
+    }
+
+    .btn-refresh-dashboard:active {
       transform: scale(0.95);
     }
 
-    .error-msg {
-      text-align: center;
-      color: #ef4444;
-      padding: 1.5rem;
-      font-size: 0.85rem;
-      line-height: 1.4;
+    .spinning-icon {
+      animation: spin 1s infinite linear;
+      animation-play-state: paused;
     }
 
-    .loading-text {
-      text-align: center;
-      color: #64748b;
-      padding: 1.5rem;
-      font-size: 0.85rem;
+    .spinning-icon.active {
+      animation-play-state: running;
     }
 
+    @keyframes spin {
+      100% { transform: rotate(360deg); }
+    }
+
+    /* TOAST SYSTEM */
+    .toast-container {
+      position: fixed;
+      bottom: 1.5rem;
+      right: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      z-index: 9999;
+      pointer-events: none;
+    }
+
+    .toast {
+      pointer-events: auto;
+      background: rgba(15, 23, 42, 0.95);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 0.85rem 1.2rem;
+      border-radius: 0.85rem;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+      color: var(--text-primary);
+      font-size: 0.8rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      transform: translateY(100px);
+      opacity: 0;
+      transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    .toast.show {
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    .toast-icon {
+      font-size: 1rem;
+    }
+
+    .toast.success { border-left: 3px solid #10b981; }
+    .toast.success .toast-icon { color: #10b981; }
+    .toast.error { border-left: 3px solid var(--accent-red); }
+    .toast.error .toast-icon { color: var(--accent-red); }
+    .toast.info { border-left: 3px solid var(--accent-blue); }
+    .toast.info .toast-icon { color: var(--accent-blue); }
+
+    /* SHAKEMAP PREVIEW MODAL */
+    .modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10000;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+
+    .modal.show {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal-backdrop {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      background: rgba(3, 7, 18, 0.75);
+      backdrop-filter: blur(12px);
+    }
+
+    .modal-content {
+      position: relative;
+      width: 90%;
+      max-width: 550px;
+      background: rgba(15, 23, 42, 0.95);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 1.75rem;
+      overflow: hidden;
+      transform: scale(0.9);
+      transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      z-index: 2;
+    }
+
+    .modal.show .modal-content {
+      transform: scale(1);
+    }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1.25rem 1.5rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .modal-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #ffffff;
+    }
+
+    .modal-close {
+      background: rgba(255, 255, 255, 0.05);
+      border: none;
+      color: var(--text-secondary);
+      font-size: 1.5rem;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+
+    .modal-close:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: #ffffff;
+    }
+
+    .modal-body {
+      padding: 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #020617;
+      min-height: 250px;
+      position: relative;
+    }
+
+    .modal-body img {
+      max-width: 100%;
+      max-height: 400px;
+      height: auto;
+      border-radius: 0.75rem;
+      display: block;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+    }
+
+    /* Skeleton Loading State Elements */
+    .skeleton {
+      background: linear-gradient(90deg, 
+        rgba(255, 255, 255, 0.03) 25%, 
+        rgba(255, 255, 255, 0.08) 37%, 
+        rgba(255, 255, 255, 0.03) 63%
+      );
+      background-size: 400% 100%;
+      animation: skeleton-glow 1.4s ease infinite;
+      border-radius: 0.35rem;
+    }
+
+    @keyframes skeleton-glow {
+      0% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    .skeleton-text {
+      height: 12px;
+      width: 100%;
+      margin-bottom: 0.5rem;
+    }
+
+    .skeleton-badge {
+      height: 42px;
+      width: 42px;
+      border-radius: 50%;
+    }
+
+    /* Attribution note */
     .footer-note {
       text-align: center;
-      font-size: 0.6rem;
-      color: #475569;
-      margin-top: 0.5rem;
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      margin-top: 1rem;
+      font-weight: 500;
+      letter-spacing: 0.2px;
     }
 
-    @media (min-width: 420px) {
-      .magnitude { font-size: 4.5rem; }
-      .location-name { font-size: 1.05rem; }
+    /* RESPONSIVE LAYOUTS */
+    @media (max-width: 1024px) {
+      .dashboard-grid {
+        grid-template-columns: 1fr;
+      }
+      .main-column {
+        order: 1;
+      }
+      .sidebar-column {
+        order: 2;
+      }
     }
 
-    @media (min-width: 500px) {
-      .glass-panel { padding: 1.6rem 1.3rem 1.8rem; }
-      .detail-item { padding: 0.8rem 0.4rem; }
+    @media (max-width: 640px) {
+      .dashboard-container {
+        padding: 0.75rem;
+        gap: 0.75rem;
+      }
+      header {
+        padding: 0.85rem 1rem;
+      }
+      .glass-panel {
+        padding: 1.1rem;
+      }
+      .card-main-display {
+        gap: 1.25rem;
+      }
+      .magnitude-ring-wrapper {
+        width: 100px;
+        height: 100px;
+      }
+      .magnitude-value {
+        font-size: 2.2rem;
+      }
+      .info-overview h2 {
+        font-size: 1.15rem;
+      }
+      .metrics-grid {
+        grid-template-columns: 1fr 1fr;
+      }
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <div class="glass-panel">
-      <div class="header">
-        <div class="logo">
-          <span class="logo-icon" id="shakeIcon">🌍</span>
-          <div>
-            <div class="logo-text">GempaWatch</div>
-            <div class="logo-sub">BMKG • Real-time</div>
+
+  <div class="dashboard-container">
+    
+    <!-- Premium Header -->
+    <header>
+      <div class="brand-section">
+        <div class="brand-icon-wrapper" id="brandIcon">
+          🌍
+        </div>
+        <div class="brand-text">
+          <h1>GempaWatch Pro</h1>
+          <p><span class="seismic-small-dot"></span>BMKG Real-time Seismic Feed</p>
+        </div>
+      </div>
+      
+      <div class="status-group">
+        <div class="clock-badge">
+          🕒 <span id="digitalClock">00:00:00 WIB</span>
+        </div>
+        <div class="live-indicator">
+          <span class="live-pulse-dot"></span> LIVE MONITORING
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Grid Dashboard -->
+    <div class="dashboard-grid">
+      
+      <!-- LEFT COLUMN: Live Map & Main Earthquake detail -->
+      <div class="main-column">
+        
+        <!-- Live Map Card -->
+        <div class="glass-panel map-card">
+          <div class="map-container" id="seismicMap"></div>
+        </div>
+
+        <!-- Latest Detailed Earthquake Card -->
+        <div class="glass-panel primary-quake-card" id="latestQuakeCard">
+          <div class="card-header-accent">
+            🚨 Mengambil Data Gempa Utama...
+          </div>
+          <div class="card-main-display">
+            <!-- Dynamic Skeleton Loader -->
+            <div class="skeleton skeleton-badge" style="width: 100px; height: 100px;"></div>
+            <div class="info-overview" style="display:flex; flex-direction:column; gap:0.5rem; width:calc(100% - 130px);">
+              <div class="skeleton skeleton-text" style="width: 60%; height: 20px;"></div>
+              <div class="skeleton skeleton-text" style="width: 40%;"></div>
+              <div class="skeleton skeleton-text" style="width: 80%;"></div>
+            </div>
           </div>
         </div>
-        <div class="live-badge">
-          <span class="live-dot"></span> LIVE
+
+      </div>
+
+      <!-- RIGHT COLUMN: Stats & Felt List -->
+      <div class="sidebar-column">
+        
+        <!-- Stats summary panel -->
+        <div class="glass-panel">
+          <div class="sidebar-title">📊 Analisis Seismik</div>
+          
+          <div class="stats-summary-grid">
+            <div class="stat-mini-card">
+              <span class="stat-mini-label">Puncak Mag</span>
+              <span class="stat-mini-val" id="statsPeakMag">--</span>
+              <span class="stat-mini-sub" id="statsPeakLoc">-</span>
+            </div>
+            <div class="stat-mini-card">
+              <span class="stat-mini-label">Rerata Dalam</span>
+              <span class="stat-mini-val" id="statsAvgDepth">--</span>
+              <span class="stat-mini-sub" id="statsDepthStatus">-</span>
+            </div>
+          </div>
+
+          <div class="stats-category-panel">
+            <div class="stat-bar-item">
+              <div class="stat-bar-labels">
+                <span>🟢 Ringan (< M4)</span>
+                <span id="statCountGreen">0</span>
+              </div>
+              <div class="stat-bar-track">
+                <div class="stat-bar-fill teal" id="statBarGreen"></div>
+              </div>
+            </div>
+            <div class="stat-bar-item">
+              <div class="stat-bar-labels">
+                <span>🟡 Ringan-Sedang (M4-5)</span>
+                <span id="statCountYellow">0</span>
+              </div>
+              <div class="stat-bar-track">
+                <div class="stat-bar-fill yellow" id="statBarYellow"></div>
+              </div>
+            </div>
+            <div class="stat-bar-item">
+              <div class="stat-bar-labels">
+                <span>🟠 Sedang (M5-6)</span>
+                <span id="statCountOrange">0</span>
+              </div>
+              <div class="stat-bar-track">
+                <div class="stat-bar-fill orange" id="statBarOrange"></div>
+              </div>
+            </div>
+            <div class="stat-bar-item">
+              <div class="stat-bar-labels">
+                <span>🔴 Kuat (>= M6)</span>
+                <span id="statCountRed">0</span>
+              </div>
+              <div class="stat-bar-track">
+                <div class="stat-bar-fill red" id="statBarRed"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Quake Feed / List Panel -->
+        <div class="glass-panel feed-card">
+          <div class="sidebar-title">📋 12 Gempa Dirasakan Terkini</div>
+          
+          <div class="filter-bar">
+            <!-- Search bar -->
+            <div class="search-wrapper">
+              <span class="search-icon">🔍</span>
+              <input type="text" class="search-input" id="searchLocationInput" placeholder="Cari wilayah/lokasi...">
+              <button class="search-clear-btn" id="searchClearBtn">&times;</button>
+            </div>
+            
+            <!-- Quick Category Filters -->
+            <div class="filter-pills">
+              <div class="pill active" data-filter="all">Semua Gempa</div>
+              <div class="pill" data-filter="strong">🟠 Kuat (M >= 5.0)</div>
+              <div class="pill" data-filter="mild">🟢 Ringan (M < 5.0)</div>
+            </div>
+          </div>
+
+          <!-- Feed Scroll Container -->
+          <div class="quake-feed-scroll" id="quakeFeedList">
+            <!-- Loading Skeleton Items -->
+            <div class="feed-item skeleton" style="height: 60px;"></div>
+            <div class="feed-item skeleton" style="height: 60px;"></div>
+            <div class="feed-item skeleton" style="height: 60px;"></div>
+            <div class="feed-item skeleton" style="height: 60px;"></div>
+          </div>
+
+          <!-- Footer Refresh Status Row -->
+          <div class="refresh-footer-row">
+            <span class="update-timestamp" id="lastUpdateTime">🕒 Mengambil data...</span>
+            <button class="btn-refresh-dashboard" id="btnRefresh">
+              <span class="spinning-icon" id="btnRefreshIcon">🔄</span> Perbarui
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- Legal Disclaimer / Source Info -->
+    <div class="footer-note">
+      Sistem monitoring seismik terintegrasi • Data bersumber langsung dari data.bmkg.go.id • Pembaruan otomatis setiap 2 menit
+    </div>
+
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- Detailed Modal Shakemap -->
+  <div class="modal" id="shakemapModal">
+    <div class="modal-backdrop" id="modalBackdrop"></div>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title">🗺️ Peta Guncangan BMKG (Shakemap)</h3>
+        <button class="modal-close" id="modalCloseBtn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <img id="modalShakemapImg" src="" alt="Shakemap Detail" onerror="this.style.display='none'; document.getElementById('modalShakemapError').style.display='block';">
+        <div id="modalShakemapLoading" class="loading-text" style="position: absolute; display: none;">⏳ Memuat peta...</div>
+        <div id="modalShakemapError" class="error-msg" style="display: none; color: var(--accent-red); font-size: 0.85rem; padding: 2rem;">
+          ❌ Gambar Shakemap tidak dirilis oleh BMKG untuk gempa ini.
         </div>
       </div>
-
-      <div id="latestCard">
-        <div class="latest-card">
-          <div class="loading-text">⏳ Memuat data gempa terbaru...</div>
-        </div>
-      </div>
-
-      <div class="section-title">📋 Daftar Gempa Terbaru</div>
-      <div class="quake-list" id="quakeList">
-        <div class="loading-text">Memuat data...</div>
-      </div>
-
-      <div class="refresh-row">
-        <span id="lastUpdate">Diperbarui: --:--:--</span>
-        <button class="refresh-btn" id="refreshBtn">🔄 Refresh</button>
-      </div>
-      <div class="footer-note">Sumber: data.bmkg.go.id • Auto-update 2 menit</div>
     </div>
   </div>
 
   <script>
     (function() {
-      const latestCard = document.getElementById('latestCard');
-      const quakeList = document.getElementById('quakeList');
-      const lastUpdate = document.getElementById('lastUpdate');
-      const refreshBtn = document.getElementById('refreshBtn');
-      const shakeIcon = document.getElementById('shakeIcon');
+      // Elements Cache
+      const latestQuakeCard = document.getElementById('latestQuakeCard');
+      const quakeFeedList = document.getElementById('quakeFeedList');
+      const lastUpdateTime = document.getElementById('lastUpdateTime');
+      const btnRefresh = document.getElementById('btnRefresh');
+      const btnRefreshIcon = document.getElementById('btnRefreshIcon');
+      const brandIcon = document.getElementById('brandIcon');
+      const digitalClock = document.getElementById('digitalClock');
+      const searchLocationInput = document.getElementById('searchLocationInput');
+      const searchClearBtn = document.getElementById('searchClearBtn');
+      const filterPills = document.querySelectorAll('.filter-pills .pill');
+      const toastContainer = document.getElementById('toastContainer');
+      
+      // Shakemap Modal Elements
+      const shakemapModal = document.getElementById('shakemapModal');
+      const modalBackdrop = document.getElementById('modalBackdrop');
+      const modalCloseBtn = document.getElementById('modalCloseBtn');
+      const modalShakemapImg = document.getElementById('modalShakemapImg');
+      const modalShakemapLoading = document.getElementById('modalShakemapLoading');
+      const modalShakemapError = document.getElementById('modalShakemapError');
 
+      // Stats Elements
+      const statsPeakMag = document.getElementById('statsPeakMag');
+      const statsPeakLoc = document.getElementById('statsPeakLoc');
+      const statsAvgDepth = document.getElementById('statsAvgDepth');
+      const statsDepthStatus = document.getElementById('statsDepthStatus');
+      const statCountGreen = document.getElementById('statCountGreen');
+      const statCountYellow = document.getElementById('statCountYellow');
+      const statCountOrange = document.getElementById('statCountOrange');
+      const statCountRed = document.getElementById('statCountRed');
+      const statBarGreen = document.getElementById('statBarGreen');
+      const statBarYellow = document.getElementById('statBarYellow');
+      const statBarOrange = document.getElementById('statBarOrange');
+      const statBarRed = document.getElementById('statBarRed');
+
+      // State variables
+      let primaryQuakeData = null;
+      let feltQuakesList = [];
+      let activeFilter = 'all';
+      let activeSearch = '';
+      let isSpeaking = false;
+      let currentUtterance = null;
+      
+      // Leaflet Map State
+      let map = null;
+      let primaryMarker = null;
+      let feltMarkersLayer = null;
+
+      // API Endpoints
       const BMKG_AUTO_URL = 'https://data.bmkg.go.id/DataMKG/TEWS/autogempa.json';
       const BMKG_FELT_URL = 'https://data.bmkg.go.id/DataMKG/TEWS/gempaterkini.json';
 
+      // Digital Clock Implementation
+      function updateClock() {
+        const now = new Date();
+        digitalClock.textContent = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' WIB';
+      }
+      setInterval(updateClock, 1000);
+      updateClock();
+
+      // Synthesize Beautiful Sonar Beep using Web Audio API (sci-fi room vibe)
+      function playSonarPing() {
+        try {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          if (!AudioContext) return;
+          const ctx = new AudioContext();
+          
+          // Primary Ping
+          const osc1 = ctx.createOscillator();
+          const gain1 = ctx.createGain();
+          const filter = ctx.createBiquadFilter();
+          
+          osc1.type = 'sine';
+          osc1.frequency.setValueAtTime(987.77, ctx.currentTime); // B5 note (high clarity)
+          osc1.frequency.exponentialRampToValueAtTime(493.88, ctx.currentTime + 0.18);
+          
+          filter.type = 'lowpass';
+          filter.frequency.setValueAtTime(1600, ctx.currentTime);
+          
+          gain1.gain.setValueAtTime(0.08, ctx.currentTime);
+          gain1.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.8);
+          
+          osc1.connect(filter);
+          filter.connect(gain1);
+          gain1.connect(ctx.destination);
+          
+          osc1.start();
+          osc1.stop(ctx.currentTime + 0.85);
+          
+          // Soft Echo/Subharmonic after 80ms
+          setTimeout(() => {
+            const osc2 = ctx.createOscillator();
+            const gain2 = ctx.createGain();
+            osc2.type = 'sine';
+            osc2.frequency.setValueAtTime(587.33, ctx.currentTime); // D5 note
+            osc2.frequency.exponentialRampToValueAtTime(293.66, ctx.currentTime + 0.25);
+            gain2.gain.setValueAtTime(0.03, ctx.currentTime);
+            gain2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+            osc2.connect(gain2);
+            gain2.connect(ctx.destination);
+            osc2.start();
+            osc2.stop(ctx.currentTime + 0.5);
+          }, 85);
+          
+        } catch (e) {
+          console.log("AudioContext blocked or unsupported", e);
+        }
+      }
+
+      // Initialize Leaflet Map
+      function initMap() {
+        try {
+          // Centered at Indonesia center coordinates
+          map = L.map('seismicMap', {
+            center: [-2.5, 118],
+            zoom: 5,
+            zoomControl: true,
+            maxBounds: [[-12, 92], [8, 142]],
+            minZoom: 4
+          });
+
+          // Elegant Dark Map Tiles (CartoDB Dark Matter)
+          L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+            subdomains: 'abcd',
+            maxZoom: 20
+          }).addTo(map);
+
+          feltMarkersLayer = L.layerGroup().addTo(map);
+          
+          // Re-scale map controls on mobile
+          if (window.innerWidth < 640) {
+            map.setZoom(4);
+          }
+        } catch (err) {
+          console.error("Map initialization failed", err);
+          showToast("Gagal memuat peta interaktif", "error");
+        }
+      }
+
+      // Toast Notification System
+      function showToast(message, type = 'info') {
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        
+        let icon = 'ℹ️';
+        if (type === 'success') icon = '✅';
+        if (type === 'error') icon = '⚠️';
+        
+        toast.innerHTML = `<span class="toast-icon">${icon}</span> <span>${message}</span>`;
+        toastContainer.appendChild(toast);
+        
+        // Trigger reflow for slide animation
+        setTimeout(() => toast.classList.add('show'), 10);
+        
+        // Auto remove toast
+        setTimeout(() => {
+          toast.classList.remove('show');
+          setTimeout(() => toast.remove(), 400);
+        }, 4000);
+      }
+
+      // BMKG Text Fixes & Cleaning
       function fixLocationText(text) {
         if (!text || typeof text !== 'string') return text;
-        if (text.includes(' ')) return text.trim();
-
+        
+        // Remove duplicate spacing and capitalize
+        let fixed = text.replace(/\s+/g, ' ').trim();
+        
+        // BMKG sometimes concatenates keywords. Let's fix common concatenated keywords
         const keywords = [
           'SELATAN', 'UTARA', 'TIMUR', 'BARAT', 'TENGAH', 'TENGGARA',
           'BENGKULU', 'SUMATERA', 'JAWA', 'KALIMANTAN', 'SULAWESI', 'PAPUA',
           'MALUKU', 'NUSA', 'TENGGARA', 'BARATDAYA', 'TIMURLAUT',
-          'BARATLAUT', 'LAUT', 'DAYA'
+          'BARATLAUT', 'LAUT', 'DAYA', 'SABANG', 'MERAUKE', 'GORONTALO'
         ];
 
-        let fixed = text;
-        for (const keyword of keywords) {
-          if (fixed.endsWith(keyword) && fixed.length > keyword.length) {
-            fixed = fixed.substring(0, fixed.length - keyword.length) + ' ' + keyword;
-            break;
-          }
+        for (const k of keywords) {
+          // If ends with keyword e.g. "BengkuluUtara" -> "Bengkulu Utara"
+          const rxEnd = new RegExp(`([a-zA-Z])(${k})$`);
+          fixed = fixed.replace(rxEnd, '$1 $2');
+          
+          // If starts with keyword e.g. "BaratdayaKota" -> "Baratdaya Kota"
+          const rxStart = new RegExp(`^(${k})([A-Z][a-z])`);
+          fixed = fixed.replace(rxStart, '$1 $2');
         }
-        if (!fixed.includes(' ')) {
-          for (const keyword of keywords) {
-            if (fixed.startsWith(keyword) && fixed.length > keyword.length) {
-              fixed = keyword + ' ' + fixed.substring(keyword.length);
-              break;
-            }
-          }
-        }
+        
         return fixed.trim();
       }
 
-      function formatDateTime(dateStr) {
+      // Date & Time formatting helpers
+      function formatFullDateTime(dateStr) {
         try {
           const date = new Date(dateStr);
           if (isNaN(date.getTime())) return dateStr;
           return date.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) +
-                 ' • ' + date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                 ' • ' + date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB';
         } catch(e) { return dateStr; }
       }
 
-      function formatDate(dateStr) {
-        try { return new Date(dateStr).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }); } catch(e) { return dateStr; }
+      function formatShortDate(dateStr) {
+        try {
+          return new Date(dateStr).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+        } catch(e) { return dateStr; }
       }
 
-      function formatTime(dateStr) {
-        try { return new Date(dateStr).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }); } catch(e) { return ''; }
+      function formatShortTime(dateStr) {
+        try {
+          return new Date(dateStr).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB';
+        } catch(e) { return ''; }
       }
 
+      // Calculate Relative time (e.g. "10 menit yang lalu")
+      function getRelativeTime(dateStr) {
+        try {
+          const diff = Date.now() - new Date(dateStr).getTime();
+          if (diff < 0) return 'Baru saja';
+          const mins = Math.floor(diff / 60000);
+          if (mins < 1) return 'Baru saja';
+          if (mins < 60) return `${mins}m yang lalu`;
+          const hours = Math.floor(mins / 60);
+          if (hours < 24) return `${hours}j yang lalu`;
+          const days = Math.floor(hours / 24);
+          return `${days} hari yang lalu`;
+        } catch (e) {
+          return '';
+        }
+      }
+
+      // Magnitudo Classification
       function getMagClass(mag) {
-        if (mag < 3) return 'green';
-        if (mag < 5) return 'yellow';
-        if (mag < 7) return 'orange';
+        const m = parseFloat(mag);
+        if (m < 4.0) return 'green';
+        if (m < 5.0) return 'yellow';
+        if (m < 6.0) return 'orange';
         return 'red';
       }
 
-      function getShakemapURL(str) {
-        if (!str || str === '-' || str === '') return null;
-        return `https://data.bmkg.go.id/DataMKG/TEWS/${str}`;
+      // Build Marker Icon
+      function createCustomMarker(mag, isLatest = false) {
+        const magClass = getMagClass(mag);
+        const size = isLatest ? 36 : 18;
+        const pulseClass = isLatest ? 'seismic-pulse-large' : 'seismic-pulse-small';
+        
+        return L.divIcon({
+          className: 'custom-map-marker',
+          html: `
+            <div class="marker-container ${magClass} ${isLatest ? 'is-latest' : ''}">
+              <div class="marker-core" style="width: ${size/2.2}px; height: ${size/2.2}px;"></div>
+              <div class="marker-ring ${pulseClass}"></div>
+            </div>
+          `,
+          iconSize: [size, size],
+          iconAnchor: [size/2, size/2]
+        });
       }
 
-      function renderLatestQuake(data) {
+      // Dynamic circular progress SVG offset calculation
+      function getRingDashOffset(mag) {
+        const maxMag = 10;
+        const parsed = parseFloat(mag) || 0;
+        const percentage = Math.min(100, Math.max(0, (parsed / maxMag) * 100));
+        const radius = 60;
+        const circumference = 2 * Math.PI * radius; // ~376.99
+        return circumference - (percentage / 100) * circumference;
+      }
+
+      // Open Shakemap Detail in beautiful Modal
+      function openShakemap(imageFilename) {
+        if (!imageFilename || imageFilename === '-' || imageFilename === '') {
+          showToast("Gambar Shakemap tidak tersedia untuk gempa ini", "info");
+          return;
+        }
+
+        modalShakemapImg.style.display = 'none';
+        modalShakemapError.style.display = 'none';
+        modalShakemapLoading.style.display = 'block';
+        shakemapModal.classList.add('show');
+        
+        const fullURL = `https://data.bmkg.go.id/DataMKG/TEWS/${imageFilename}`;
+        modalShakemapImg.src = fullURL;
+
+        modalShakemapImg.onload = () => {
+          modalShakemapLoading.style.display = 'none';
+          modalShakemapImg.style.display = 'block';
+        };
+      }
+
+      // Close Modal logic
+      function closeModal() {
+        shakemapModal.classList.remove('show');
+      }
+
+      modalCloseBtn.addEventListener('click', closeModal);
+      modalBackdrop.addEventListener('click', closeModal);
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeModal();
+      });
+
+      // Speak Quake Info (AI Voice Synthesis in ID)
+      function toggleVoiceSpeech(g) {
+        if (!('speechSynthesis' in window)) {
+          showToast("Browser Anda tidak mendukung fitur Asisten Suara", "error");
+          return;
+        }
+
+        const speakBtn = document.getElementById('btnVoiceSpeak');
+
+        if (isSpeaking) {
+          window.speechSynthesis.cancel();
+          isSpeaking = false;
+          if (speakBtn) {
+            speakBtn.classList.remove('voice-active');
+            speakBtn.innerHTML = '🔊 Dengarkan Info';
+          }
+          showToast("Asisten suara dihentikan", "info");
+          return;
+        }
+
+        const cleanLoc = fixLocationText(g.Wilayah);
+        const speechText = `Pemberitahuan gempa bumi terkini dari Gempa Watch. Magnitudo ${g.Magnitude.replace('.', ' koma ')}. Terjadi di wilayah ${cleanLoc}. Pada kedalaman ${g.Kedalaman}. Potensi: ${g.Potensi}. Harap tetap waspada terhadap gempa susulan.`;
+
+        currentUtterance = new SpeechSynthesisUtterance(speechText);
+        currentUtterance.lang = 'id-ID';
+        currentUtterance.rate = 0.92;
+        currentUtterance.pitch = 1.05;
+
+        // Try to fetch custom Indonesian voice
+        const voices = window.speechSynthesis.getVoices();
+        const idVoice = voices.find(voice => voice.lang.includes('id') || voice.lang.includes('ID'));
+        if (idVoice) {
+          currentUtterance.voice = idVoice;
+        }
+
+        currentUtterance.onstart = () => {
+          isSpeaking = true;
+          if (speakBtn) {
+            speakBtn.classList.add('voice-active');
+            speakBtn.innerHTML = '⏹️ Hentikan Suara';
+          }
+          showToast("Asisten suara sedang membacakan info gempa", "success");
+        };
+
+        currentUtterance.onend = () => {
+          isSpeaking = false;
+          if (speakBtn) {
+            speakBtn.classList.remove('voice-active');
+            speakBtn.innerHTML = '🔊 Dengarkan Info';
+          }
+        };
+
+        currentUtterance.onerror = () => {
+          isSpeaking = false;
+          if (speakBtn) {
+            speakBtn.classList.remove('voice-active');
+            speakBtn.innerHTML = '🔊 Dengarkan Info';
+          }
+        };
+
+        window.speechSynthesis.speak(currentUtterance);
+      }
+
+      // Handle voice load (needed for Chrome/mobile)
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.onvoiceschanged = () => {};
+      }
+
+      // Render Primary Card (Latest Earthquake)
+      function renderPrimaryQuake(data) {
         if (!data?.Infogempa?.gempa) {
-          return '<div class="latest-card"><div class="error-msg">❌ Data gempa tidak tersedia</div></div>';
+          latestQuakeCard.innerHTML = `
+            <div class="card-header-accent" style="color:var(--accent-red)">❌ Gagal memuat data</div>
+            <div style="padding:1.5rem; text-align:center; color:var(--text-muted)">Data gempa utama tidak tersedia</div>`;
+          return;
         }
 
         const g = data.Infogempa.gempa;
-        const coords = g.Coordinates ? g.Coordinates.split(',').map(c => c.trim()) : ['-', '-'];
-        const wilayah = fixLocationText(g.Wilayah);
-        const shakemapURL = getShakemapURL(g.Shakemap);
+        primaryQuakeData = g;
+        
+        const coords = g.Coordinates ? g.Coordinates.split(',').map(c => parseFloat(c.trim())) : [0, 0];
+        const cleanLoc = fixLocationText(g.Wilayah);
+        const magClass = getMagClass(g.Magnitude);
+        const offset = getRingDashOffset(g.Magnitude);
 
-        shakeIcon.classList.add('active');
-        setTimeout(() => shakeIcon.classList.remove('active'), 2000);
+        // Update Class Accent to Main Panel
+        latestQuakeCard.className = `glass-panel primary-quake-card ${magClass}`;
 
-        let shakemapHTML = '';
-        if (shakemapURL) {
-          shakemapHTML = `<div class="shakemap-container"><img class="shakemap-img" src="${shakemapURL}" alt="Shakemap BMKG" loading="lazy" onerror="this.parentElement.style.display='none'"></div>`;
+        // Seismic Potensi Danger Warning color check
+        let potensiHTML = '';
+        if (g.Potensi && (g.Potensi.toLowerCase().includes('tsunami') || g.Potensi.toLowerCase().includes('potensi'))) {
+          potensiHTML = `<span class="metric-value status-danger">${g.Potensi}</span>`;
+        } else {
+          potensiHTML = `<span class="metric-value status-alert" style="color:var(--accent-teal)">${g.Potensi || 'Aman'}</span>`;
         }
 
-        return `
-          <div class="latest-card">
-            <div class="latest-label">⚠️ Gempa Terbaru</div>
-            <div class="magnitude">${g.Magnitude}</div>
-            <div class="mag-label">Magnitudo</div>
-            <div class="location-name">📍 ${wilayah}</div>
-            <div class="time-info">🕐 ${formatDateTime(g.DateTime)}</div>
-            ${shakemapHTML}
-            <div class="detail-grid">
-              <div class="detail-item"><div class="detail-icon">🌊</div><div class="detail-label">Kedalaman</div><div class="detail-value">${g.Kedalaman}</div></div>
-              <div class="detail-item"><div class="detail-icon">📏</div><div class="detail-label">Lintang</div><div class="detail-value">${coords[0]}</div></div>
-              <div class="detail-item"><div class="detail-icon">📐</div><div class="detail-label">Bujur</div><div class="detail-value">${coords[1]}</div></div>
-              <div class="detail-item"><div class="detail-icon">⚠️</div><div class="detail-label">Potensi</div><div class="detail-value">${g.Potensi || '-'}</div></div>
-              <div class="detail-item"><div class="detail-icon">👥</div><div class="detail-label">Dirasakan</div><div class="detail-value">${g.Dirasakan || '-'}</div></div>
-              <div class="detail-item"><div class="detail-icon">🗺️</div><div class="detail-label">Shakemap</div><div class="detail-value" style="font-size:0.6rem;">Tersedia</div></div>
+        latestQuakeCard.innerHTML = `
+          <div class="card-header-accent">
+            🚨 Info Gempa Utama (Terbaru)
+          </div>
+          <div class="card-main-display">
+            <!-- Magnificent Magnitude Ring -->
+            <div class="magnitude-ring-wrapper">
+              <svg class="magnitude-ring-svg">
+                <circle class="magnitude-ring-bg" cx="70" cy="70" r="60" />
+                <circle class="magnitude-ring-fill ${magClass}" cx="70" cy="70" r="60" style="stroke-dashoffset: ${offset}; stroke: var(--accent-${magClass});" />
+              </svg>
+              <div class="magnitude-text-center">
+                <span class="magnitude-value">${g.Magnitude}</span>
+                <span class="magnitude-label">Magnitudo</span>
+              </div>
             </div>
-          </div>`;
+            
+            <div class="info-overview">
+              <h2>📍 ${cleanLoc}</h2>
+              <div class="datetime-text">
+                📅 ${formatFullDateTime(g.DateTime)}
+              </div>
+              <div class="button-group-row">
+                <button class="btn-action btn-voice" id="btnVoiceSpeak">
+                  🔊 Dengarkan Info
+                </button>
+                <button class="btn-action btn-accent" id="btnOpenShakemap">
+                  🗺️ Shakemap Detail
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Dynamic Key Parameters Grid -->
+          <div class="metrics-grid">
+            <div class="metric-item">
+              <div class="metric-meta">
+                <span class="metric-icon">🌊</span>
+                <span>Kedalaman</span>
+              </div>
+              <span class="metric-value">${g.Kedalaman}</span>
+            </div>
+            <div class="metric-item">
+              <div class="metric-meta">
+                <span class="metric-icon">📐</span>
+                <span>Koordinat</span>
+              </div>
+              <span class="metric-value" style="font-size:0.88rem;">${coords[0]}° L, ${coords[1]}° B</span>
+            </div>
+            <div class="metric-item">
+              <div class="metric-meta">
+                <span class="metric-icon">⚠️</span>
+                <span>Potensi</span>
+              </div>
+              ${potensiHTML}
+            </div>
+            <div class="metric-item" style="grid-column: span 2;">
+              <div class="metric-meta">
+                <span class="metric-icon">👥</span>
+                <span>Wilayah Dirasakan</span>
+              </div>
+              <span class="metric-value" style="font-size:0.85rem; color:var(--text-secondary); font-family:var(--font-main); font-weight:500;">
+                ${g.Dirasakan || 'Hanya terdeteksi instrumen'}
+              </span>
+            </div>
+          </div>
+        `;
+
+        // Attach event listeners to buttons inside generated HTML
+        document.getElementById('btnVoiceSpeak').addEventListener('click', () => toggleVoiceSpeech(g));
+        document.getElementById('btnOpenShakemap').addEventListener('click', () => openShakemap(g.Shakemap));
+
+        // Re-center Leaflet Map to primary earthquake
+        if (map && coords[0] !== 0) {
+          if (primaryMarker) {
+            map.removeLayer(primaryMarker);
+          }
+          
+          primaryMarker = L.marker([coords[0], coords[1]], {
+            icon: createCustomMarker(g.Magnitude, true)
+          }).addTo(map);
+
+          // Dark Map Popup
+          const popupContent = `
+            <div class="popup-title">
+              <span>⚠️ Gempa Terkini</span>
+              <span class="popup-mag" style="background:var(--accent-${magClass}); color:#000;">${g.Magnitude}</span>
+            </div>
+            <div class="popup-meta">
+              <strong>Lokasi:</strong> ${cleanLoc}<br>
+              <strong>Kedalaman:</strong> ${g.Kedalaman}<br>
+              <strong>Potensi:</strong> ${g.Potensi || '-'}
+            </div>
+          `;
+          primaryMarker.bindPopup(popupContent);
+          
+          // Pan map nicely
+          map.setView([coords[0], coords[1]], 6, { animate: true, duration: 1.5 });
+        }
       }
 
-      function renderQuakeList(quakes) {
-        if (!quakes?.length) return '<div class="loading-text">📭 Tidak ada data gempa</div>';
-        return quakes.slice(0, 12).map(q => {
-          const mag = parseFloat(q.Magnitude);
-          const magClass = getMagClass(mag);
-          const wilayah = fixLocationText(q.Wilayah);
+      // Calculate Visual Statistics & Mini Infographics
+      function calculateStatistics(quakes) {
+        if (!quakes || !quakes.length) return;
+
+        let maxMag = 0;
+        let peakLoc = '';
+        let totalDepth = 0;
+        
+        let countGreen = 0;
+        let countYellow = 0;
+        let countOrange = 0;
+        let countRed = 0;
+
+        quakes.forEach(q => {
+          const mag = parseFloat(q.Magnitude) || 0;
+          const depth = parseFloat(q.Kedalaman.replace(/[^0-9]/g, '')) || 0;
+
+          // Peak magnitude calculation
+          if (mag > maxMag) {
+            maxMag = mag;
+            peakLoc = fixLocationText(q.Wilayah);
+          }
+
+          // Depth accumulator
+          totalDepth += depth;
+
+          // Categorization Count
+          if (mag < 4.0) countGreen++;
+          else if (mag < 5.0) countYellow++;
+          else if (mag < 6.0) countOrange++;
+          else countRed++;
+        });
+
+        const avgDepth = Math.round(totalDepth / quakes.length);
+
+        // Update Mini Cards
+        statsPeakMag.textContent = maxMag.toFixed(1);
+        statsPeakLoc.textContent = peakLoc;
+        statsAvgDepth.textContent = `${avgDepth} km`;
+
+        // Depth Level verbal status
+        if (avgDepth < 60) {
+          statsDepthStatus.textContent = 'Dangkal (Sangat Aktif)';
+          statsDepthStatus.style.color = '#38bdf8';
+        } else if (avgDepth < 300) {
+          statsDepthStatus.textContent = 'Menengah (Stabil)';
+          statsDepthStatus.style.color = '#fbbf24';
+        } else {
+          statsDepthStatus.textContent = 'Dalam (Sangat Aman)';
+          statsDepthStatus.style.color = '#34d399';
+        }
+
+        // Update Category Labels
+        statCountGreen.textContent = countGreen;
+        statCountYellow.textContent = countYellow;
+        statCountOrange.textContent = countOrange;
+        statCountRed.textContent = countRed;
+
+        // Calculate and animate statistics graph bars (percentage of 12 total items)
+        const total = quakes.length;
+        statBarGreen.style.width = `${(countGreen / total) * 100}%`;
+        statBarYellow.style.width = `${(countYellow / total) * 100}%`;
+        statBarOrange.style.width = `${(countOrange / total) * 100}%`;
+        statBarRed.style.width = `${(countRed / total) * 100}%`;
+      }
+
+      // Plot all Felt Earthquakes as markers on map
+      function plotFeltEarthquakesOnMap(quakes) {
+        if (!map || !feltMarkersLayer) return;
+        
+        // Clear previous layers
+        feltMarkersLayer.clearLayers();
+
+        quakes.forEach((q, idx) => {
+          if (!q.Coordinates) return;
+          const coords = q.Coordinates.split(',').map(c => parseFloat(c.trim()));
+          if (coords.length < 2 || isNaN(coords[0]) || isNaN(coords[1])) return;
+          
+          const magClass = getMagClass(q.Magnitude);
+          const cleanLoc = fixLocationText(q.Wilayah);
+
+          const marker = L.marker([coords[0], coords[1]], {
+            icon: createCustomMarker(q.Magnitude, false)
+          });
+
+          const popupContent = `
+            <div class="popup-title">
+              <span>📋 Gempa Felt #${idx+1}</span>
+              <span class="popup-mag" style="background:var(--accent-${magClass}); color:#000;">${q.Magnitude}</span>
+            </div>
+            <div class="popup-meta">
+              <strong>Wilayah:</strong> ${cleanLoc}<br>
+              <strong>Waktu:</strong> ${formatShortTime(q.DateTime)}<br>
+              <strong>Kedalaman:</strong> ${q.Kedalaman}
+            </div>
+          `;
+          
+          marker.bindPopup(popupContent);
+          feltMarkersLayer.addLayer(marker);
+        });
+      }
+
+      // Focus / Center map on a specific earthquake marker
+      function focusEarthquake(latitude, longitude, magnitude, location, depth) {
+        if (!map) return;
+        
+        const magClass = getMagClass(magnitude);
+        
+        // Pan map smooth
+        map.setView([latitude, longitude], 7, { animate: true, duration: 1.2 });
+        
+        // Create an elegant temporary glowing flash ripple using a Circle overlay
+        const flashCircle = L.circle([latitude, longitude], {
+          color: `var(--accent-${magClass})`,
+          fillColor: `var(--accent-${magClass})`,
+          fillOpacity: 0.35,
+          radius: 60000,
+          weight: 2
+        }).addTo(map);
+
+        // Ripple fade animation
+        let radius = 60000;
+        let opacity = 0.35;
+        const interval = setInterval(() => {
+          radius += 10000;
+          opacity -= 0.05;
+          flashCircle.setRadius(radius);
+          flashCircle.setStyle({ fillOpacity: opacity, opacity: opacity });
+          
+          if (opacity <= 0) {
+            clearInterval(interval);
+            map.removeLayer(flashCircle);
+          }
+        }, 50);
+
+        // Open popup
+        setTimeout(() => {
+          L.popup()
+            .setLatLng([latitude, longitude])
+            .setContent(`
+              <div class="popup-title">
+                <span>📍 Fokus Koordinat</span>
+                <span class="popup-mag" style="background:var(--accent-${magClass}); color:#000;">${magnitude}</span>
+              </div>
+              <div class="popup-meta">
+                <strong>Wilayah:</strong> ${location}<br>
+                <strong>Kedalaman:</strong> ${depth}
+              </div>
+            `)
+            .openOn(map);
+        }, 200);
+      }
+
+      // Render recent Felt Earthquakes feed list
+      function renderQuakeFeedList() {
+        if (!feltQuakesList.length) {
+          quakeFeedList.innerHTML = '<div style="padding:2rem; text-align:center; color:var(--text-muted)">📭 Tidak ada data gempa</div>';
+          return;
+        }
+
+        // Apply dynamic searches & filters
+        const filtered = feltQuakesList.filter(q => {
+          const mag = parseFloat(q.Magnitude) || 0;
+          const matchesSearch = fixLocationText(q.Wilayah).toLowerCase().includes(activeSearch.toLowerCase());
+          
+          if (activeFilter === 'all') return matchesSearch;
+          if (activeFilter === 'strong') return mag >= 5.0 && matchesSearch;
+          if (activeFilter === 'mild') return mag < 5.0 && matchesSearch;
+          return matchesSearch;
+        });
+
+        if (!filtered.length) {
+          quakeFeedList.innerHTML = '<div style="padding:2rem; text-align:center; color:var(--text-muted); font-size:0.8rem;">🔍 Tidak cocok dengan filter pencarian</div>';
+          return;
+        }
+
+        quakeFeedList.innerHTML = filtered.map((q, index) => {
+          const magClass = getMagClass(q.Magnitude);
+          const cleanLoc = fixLocationText(q.Wilayah);
+          const relTime = getRelativeTime(q.DateTime);
+          const coords = q.Coordinates ? q.Coordinates.split(',').map(c => parseFloat(c.trim())) : [0,0];
+
           return `
-            <div class="quake-item">
-              <div class="mag-badge ${magClass}">${q.Magnitude}</div>
-              <div class="quake-info">
-                <div class="quake-location">📍 ${wilayah}</div>
-                <div class="quake-meta">
+            <div class="feed-item ${magClass}" data-lat="${coords[0]}" data-lng="${coords[1]}" data-mag="${q.Magnitude}" data-loc="${cleanLoc}" data-depth="${q.Kedalaman}">
+              <div class="feed-mag-badge ${magClass}">
+                ${q.Magnitude}
+              </div>
+              <div class="feed-info">
+                <h4 class="feed-location">${cleanLoc}</h4>
+                <div class="feed-meta">
                   <span>🌊 ${q.Kedalaman}</span>
-                  <span>📅 ${formatDate(q.DateTime)}</span>
-                  <span>🕐 ${formatTime(q.DateTime)}</span>
+                  <span class="feed-meta-divider">|</span>
+                  <span>📅 ${formatShortDate(q.DateTime)}</span>
+                  <span class="feed-meta-divider">|</span>
+                  <span>🕐 ${formatShortTime(q.DateTime)}</span>
                 </div>
               </div>
-            </div>`;
+              <div class="feed-time-rel">${relTime}</div>
+            </div>
+          `;
         }).join('');
+
+        // Attach click listeners to list items for interactive map panning
+        document.querySelectorAll('.quake-feed-scroll .feed-item').forEach(item => {
+          item.addEventListener('click', function() {
+            const lat = parseFloat(this.getAttribute('data-lat'));
+            const lng = parseFloat(this.getAttribute('data-lng'));
+            const mag = this.getAttribute('data-mag');
+            const loc = this.getAttribute('data-loc');
+            const depth = this.getAttribute('data-depth');
+
+            // Toggle selected state
+            document.querySelectorAll('.feed-item').forEach(el => el.classList.remove('selected'));
+            this.classList.add('selected');
+
+            // Trigger Map Panning Focus
+            if (lat !== 0 && !isNaN(lat)) {
+              focusEarthquake(lat, lng, mag, loc, depth);
+              playSonarPing();
+            }
+          });
+        });
       }
 
+      // Fetch Data directly from BMKG API (No-Cache)
       async function fetchData() {
+        btnRefreshIcon.classList.add('active');
+        btnRefresh.disabled = true;
+        btnRefresh.innerHTML = '<span class="spinning-icon active">🔄</span> Sinkronisasi...';
+        brandIcon.classList.add('active-pulse');
+
         try {
           const [autoRes, feltRes] = await Promise.all([
             fetch(BMKG_AUTO_URL, { cache: 'no-cache' }),
             fetch(BMKG_FELT_URL, { cache: 'no-cache' })
           ]);
+          
+          if (!autoRes.ok || !feltRes.ok) throw new Error("Gagal menghubungi server BMKG.");
+          
           const autoData = await autoRes.json();
           const feltData = await feltRes.json();
 
-          latestCard.innerHTML = autoData?.Infogempa?.gempa ? renderLatestQuake(autoData) :
-            '<div class="latest-card"><div class="error-msg">❌ Data gempa tidak tersedia</div></div>';
+          // Render Elements
+          renderPrimaryQuake(autoData);
+          
+          // Store Felt Quakes list state
+          feltQuakesList = feltData?.Infogempa?.gempa || [];
+          
+          // Calculate dynamic stats
+          calculateStatistics(feltQuakesList);
+          
+          // Plot felt quakes on Map
+          plotFeltEarthquakesOnMap(feltQuakesList);
+          
+          // Render Feed list with search/filters applied
+          renderQuakeFeedList();
 
-          quakeList.innerHTML = feltData?.Infogempa?.gempa?.length ? renderQuakeList(feltData.Infogempa.gempa) :
-            '<div class="loading-text">📭 Belum ada data</div>';
+          // Play high-tech Sonar indicator sound
+          playSonarPing();
 
-          lastUpdate.textContent = 'Diperbarui: ' + new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+          // Update timestamp text
+          const now = new Date();
+          lastUpdateTime.textContent = 'Diperbarui: ' + now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB';
+          
+          showToast("Data seismik BMKG berhasil disinkronisasi!", "success");
         } catch (err) {
           console.error(err);
-          latestCard.innerHTML = '<div class="latest-card"><div class="error-msg">❌ Gagal menghubungi BMKG.<br>Cek koneksi internet.</div></div>';
-          quakeList.innerHTML = '<div class="loading-text">⚠️ Gagal memuat</div>';
+          showToast("Koneksi gagal. Membuka data cache terakhir...", "error");
+          
+          // Simple visual error state if card was empty
+          if (!primaryQuakeData) {
+            latestQuakeCard.innerHTML = `
+              <div class="card-header-accent" style="color:var(--accent-red)">❌ Gagal terhubung ke BMKG</div>
+              <div style="padding:2rem; text-align:center; color:var(--text-muted)">Silakan periksa koneksi internet Anda dan coba lagi.</div>
+            `;
+          }
+        } finally {
+          btnRefreshIcon.classList.remove('active');
+          btnRefresh.disabled = false;
+          btnRefresh.innerHTML = '<span class="spinning-icon">🔄</span> Perbarui';
+          
+          setTimeout(() => {
+            brandIcon.classList.remove('active-pulse');
+          }, 1500);
         }
       }
 
+      // Initializing Dashboard Setup
+      initMap();
       fetchData();
-      const interval = setInterval(fetchData, 120000);
-      refreshBtn.addEventListener('click', fetchData);
-      window.addEventListener('beforeunload', () => clearInterval(interval));
+
+      // Refresh Button Event Click
+      btnRefresh.addEventListener('click', () => {
+        fetchData();
+      });
+
+      // Filter Pill Event Clicks
+      filterPills.forEach(pill => {
+        pill.addEventListener('click', function() {
+          filterPills.forEach(p => p.classList.remove('active'));
+          this.classList.add('active');
+          
+          activeFilter = this.getAttribute('data-filter');
+          renderQuakeFeedList();
+          playSonarPing();
+        });
+      });
+
+      // Realtime Search Filter Input handler
+      searchLocationInput.addEventListener('input', function() {
+        activeSearch = this.value.trim();
+        
+        if (activeSearch.length > 0) {
+          searchClearBtn.style.display = 'block';
+        } else {
+          searchClearBtn.style.display = 'none';
+        }
+        
+        renderQuakeFeedList();
+      });
+
+      // Clear Search Text handler
+      searchClearBtn.addEventListener('click', () => {
+        searchLocationInput.value = '';
+        activeSearch = '';
+        searchClearBtn.style.display = 'none';
+        renderQuakeFeedList();
+      });
+
+      // Periodic Auto Update Feed (Every 2 Minutes - 120000ms)
+      const autoInterval = setInterval(fetchData, 120000);
+      
+      // Memory cleanup
+      window.addEventListener('beforeunload', () => {
+        clearInterval(autoInterval);
+        if ('speechSynthesis' in window) {
+          window.speechSynthesis.cancel();
+        }
+      });
+
     })();
   </script>
 </body>
