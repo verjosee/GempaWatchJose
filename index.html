@@ -919,7 +919,7 @@
       justify-content: center;
       border-radius: 0.75rem;
       flex-shrink: 0;
-      border: 1px solid rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,0.05);
       transition: box-shadow 0.3s;
     }
 
@@ -1241,42 +1241,147 @@
       letter-spacing: 0.2px;
     }
 
-    /* RESPONSIVE LAYOUTS */
+    /* MOBILE NAVIGATION SYSTEM BAR & MEDIA OVERRIDES */
+    .mobile-nav-bar {
+      display: none;
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      background: rgba(10, 15, 28, 0.94);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 0.6rem 0 calc(0.6rem + env(safe-area-inset-bottom));
+      z-index: 9998;
+      justify-content: space-around;
+      align-items: center;
+      box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.6);
+    }
+
+    .mobile-nav-btn {
+      background: none;
+      border: none;
+      color: var(--text-secondary);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.25rem;
+      cursor: pointer;
+      width: 33.33%;
+      font-family: var(--font-main);
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .mobile-nav-btn .nav-icon {
+      font-size: 1.35rem;
+      transition: transform 0.2s, text-shadow 0.2s;
+    }
+
+    .mobile-nav-btn .nav-label {
+      font-size: 0.65rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+    }
+
+    .mobile-nav-btn.active {
+      color: var(--accent-blue);
+    }
+
+    .mobile-nav-btn.active .nav-icon {
+      transform: translateY(-3px) scale(1.15);
+      text-shadow: 0 0 12px rgba(59, 130, 246, 0.6);
+    }
+
+    /* RESPONSIVE LAYOUTS & TAB TOGGLES */
     @media (max-width: 1024px) {
       .dashboard-grid {
         grid-template-columns: 1fr;
-      }
-      .main-column {
-        order: 1;
-      }
-      .sidebar-column {
-        order: 2;
+        gap: 1.5rem;
       }
     }
 
-    @media (max-width: 640px) {
+    @media (max-width: 768px) {
       .dashboard-container {
         padding: 0.75rem;
+        padding-bottom: calc(5.5rem + env(safe-area-inset-bottom)); /* spacing for mobile nav bar */
         gap: 0.75rem;
       }
+
       header {
         padding: 0.85rem 1rem;
       }
-      .glass-panel {
-        padding: 1.1rem;
+      
+      .status-group {
+        width: 100%;
+        justify-content: space-between;
+        margin-top: 0.25rem;
       }
-      .card-main-display {
-        gap: 1.25rem;
+
+      .dashboard-grid {
+        grid-template-columns: 1fr;
+        gap: 0;
       }
+
+      .main-column, .sidebar-column {
+        display: contents; /* flattens layout hierarchy for tab control */
+      }
+
+      /* Tab Panels Control */
+      .mobile-tab-content {
+        display: none !important; /* hide all tab blocks by default */
+      }
+
+      .mobile-tab-content.mobile-active {
+        display: flex !important; /* show active block */
+        animation: tabFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      }
+
+      .map-card.mobile-tab-content.mobile-active {
+        display: block !important;
+        height: calc(100vh - 195px - env(safe-area-inset-bottom));
+        min-height: 380px;
+      }
+
+      .primary-quake-card.mobile-tab-content.mobile-active,
+      .glass-panel.mobile-tab-content.mobile-active {
+        display: block !important;
+      }
+
+      .feed-card.mobile-tab-content.mobile-active {
+        display: flex !important;
+        height: calc(100vh - 195px - env(safe-area-inset-bottom));
+        min-height: 480px;
+      }
+
+      @keyframes tabFadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(12px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .mobile-nav-bar {
+        display: flex; /* display Bottom Nav Bar */
+      }
+    }
+
+    @media (max-width: 480px) {
       .magnitude-ring-wrapper {
-        width: 100px;
-        height: 100px;
+        width: 90px;
+        height: 90px;
       }
       .magnitude-value {
-        font-size: 2.2rem;
+        font-size: 2.1rem;
       }
       .info-overview h2 {
-        font-size: 1.15rem;
+        font-size: 1.1rem;
       }
       .metrics-grid {
         grid-template-columns: 1fr 1fr;
@@ -1316,13 +1421,13 @@
       <!-- LEFT COLUMN: Live Map & Main Earthquake detail -->
       <div class="main-column">
         
-        <!-- Live Map Card -->
-        <div class="glass-panel map-card">
+        <!-- Live Map Card (Mobile Tab 1) -->
+        <div class="glass-panel map-card mobile-tab-content" id="mapTabPanel" data-tab-content="peta">
           <div class="map-container" id="seismicMap"></div>
         </div>
 
-        <!-- Latest Detailed Earthquake Card -->
-        <div class="glass-panel primary-quake-card" id="latestQuakeCard">
+        <!-- Latest Detailed Earthquake Card (Mobile Tab 2) -->
+        <div class="glass-panel primary-quake-card mobile-tab-content" id="latestQuakeCard" data-tab-content="detail">
           <div class="card-header-accent">
             🚨 Mengambil Data Gempa Utama...
           </div>
@@ -1342,8 +1447,8 @@
       <!-- RIGHT COLUMN: Stats & Felt List -->
       <div class="sidebar-column">
         
-        <!-- Stats summary panel -->
-        <div class="glass-panel">
+        <!-- Stats summary panel (Mobile Tab 2) -->
+        <div class="glass-panel mobile-tab-content" id="statsTabPanel" data-tab-content="detail">
           <div class="sidebar-title">📊 Analisis Seismik</div>
           
           <div class="stats-summary-grid">
@@ -1399,8 +1504,8 @@
           </div>
         </div>
 
-        <!-- Quake Feed / List Panel -->
-        <div class="glass-panel feed-card">
+        <!-- Quake Feed / List Panel (Mobile Tab 3) -->
+        <div class="glass-panel feed-card mobile-tab-content" id="listTabPanel" data-tab-content="daftar">
           <div class="sidebar-title">📋 12 Gempa Dirasakan Terkini</div>
           
           <div class="filter-bar">
@@ -1443,9 +1548,25 @@
 
     <!-- Legal Disclaimer / Source Info -->
     <div class="footer-note">
-      Sistem monitoring seismik terintegrasi • Data bersumber langsung dari data.bmkg.go.id • Pembaruan otomatis setiap 2 menit
+      Sistem monitoring seismik terintegr • Data bersumber langsung dari data.bmkg.go.id • Pembaruan otomatis setiap 2 menit
     </div>
 
+  </div>
+
+  <!-- Mobile Navigation Bar -->
+  <div class="mobile-nav-bar" id="mobileNavBar">
+    <button class="mobile-nav-btn active" data-tab-target="peta">
+      <span class="nav-icon">🗺️</span>
+      <span class="nav-label">Peta</span>
+    </button>
+    <button class="mobile-nav-btn" data-tab-target="detail">
+      <span class="nav-icon">🚨</span>
+      <span class="nav-label">Detail</span>
+    </button>
+    <button class="mobile-nav-btn" data-tab-target="daftar">
+      <span class="nav-icon">📋</span>
+      <span class="nav-label">Daftar</span>
+    </button>
   </div>
 
   <!-- Toast Notification Container -->
@@ -1483,6 +1604,9 @@
       const searchClearBtn = document.getElementById('searchClearBtn');
       const filterPills = document.querySelectorAll('.filter-pills .pill');
       const toastContainer = document.getElementById('toastContainer');
+      const mobileNavBar = document.getElementById('mobileNavBar');
+      const mobileNavBtns = document.querySelectorAll('.mobile-nav-btn');
+      const mobileTabContents = document.querySelectorAll('.mobile-tab-content');
       
       // Shakemap Modal Elements
       const shakemapModal = document.getElementById('shakemapModal');
@@ -1530,6 +1654,61 @@
       }
       setInterval(updateClock, 1000);
       updateClock();
+
+      // Mobile Responsive Tab Switcher Logic
+      function switchMobileTab(tabId) {
+        const isMobile = window.getComputedStyle(mobileNavBar).display !== 'none';
+        if (!isMobile) return;
+
+        mobileNavBtns.forEach(btn => {
+          if (btn.getAttribute('data-tab-target') === tabId) {
+            btn.classList.add('active');
+          } else {
+            btn.classList.remove('active');
+          }
+        });
+
+        mobileTabContents.forEach(content => {
+          if (content.getAttribute('data-tab-content') === tabId) {
+            content.classList.add('mobile-active');
+          } else {
+            content.classList.remove('mobile-active');
+          }
+        });
+
+        // Critical Leaflet size invalidation on hidden container tab reveals
+        if (tabId === 'peta' && map) {
+          setTimeout(() => {
+            map.invalidateSize({ animate: true });
+          }, 80);
+        }
+      }
+
+      mobileNavBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+          const tabId = this.getAttribute('data-tab-target');
+          switchMobileTab(tabId);
+          playSonarPing();
+        });
+      });
+
+      // Synchronize desktop layout resize states
+      function handleLayoutResize() {
+        const isMobile = window.getComputedStyle(mobileNavBar).display !== 'none';
+        if (isMobile) {
+          // If mobile is active and no tabs are set active, select peta tab
+          const hasActiveTab = Array.from(mobileTabContents).some(el => el.classList.contains('mobile-active'));
+          if (!hasActiveTab) {
+            switchMobileTab('peta');
+          }
+        } else {
+          // Reset desktop displays
+          mobileTabContents.forEach(content => {
+            content.classList.remove('mobile-active');
+          });
+        }
+      }
+      window.addEventListener('resize', handleLayoutResize);
 
       // Synthesize Beautiful Sonar Beep using Web Audio API (sci-fi room vibe)
       function playSonarPing() {
@@ -1856,7 +2035,7 @@
         const offset = getRingDashOffset(g.Magnitude);
 
         // Update Class Accent to Main Panel
-        latestQuakeCard.className = `glass-panel primary-quake-card ${magClass}`;
+        latestQuakeCard.className = `glass-panel primary-quake-card mobile-tab-content ${magClass}`;
 
         // Seismic Potensi Danger Warning color check
         let potensiHTML = '';
@@ -2184,8 +2363,14 @@
 
             // Trigger Map Panning Focus
             if (lat !== 0 && !isNaN(lat)) {
-              focusEarthquake(lat, lng, mag, loc, depth);
-              playSonarPing();
+              // Smoothly transition mobile tabs back to 'peta' for direct viewing
+              switchMobileTab('peta');
+              
+              // Delay slightly to allow tab switch transition and Leaflet container dimension invalidation
+              setTimeout(() => {
+                focusEarthquake(lat, lng, mag, loc, depth);
+                playSonarPing();
+              }, 120);
             }
           });
         });
@@ -2257,6 +2442,7 @@
       // Initializing Dashboard Setup
       initMap();
       fetchData();
+      handleLayoutResize(); // triggers active tab styling on startup for mobile layouts
 
       // Refresh Button Event Click
       btnRefresh.addEventListener('click', () => {
